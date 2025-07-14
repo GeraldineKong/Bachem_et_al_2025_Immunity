@@ -1,0 +1,19 @@
+name: GEM-pipeline
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - nextflow
+  - spades=3.15.5
+  - samtools=1.17
+  - bowtie2=2.5.1
+  - vamb=4.1.1
+  - checkm2=1.0.1
+  - gunc=1.0.5
+  - drep=3.4.3
+  - python=3.7.12
+  - pandas
+  - woltka=0.1.5
+  - prodigal=2.6.3
+  - carveme=1.5.2
