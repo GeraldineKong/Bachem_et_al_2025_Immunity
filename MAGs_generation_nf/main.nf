@@ -165,7 +165,7 @@ process Dereplicate {
     path good_bins
 
     output:
-    path "drep_out"
+    path "drep_out/dereplicated_genomes", emit: drep_genomes_dir
 
     script:
     """
@@ -173,6 +173,45 @@ process Dereplicate {
       --ignoreGenomeQuality \
       -p ${params.threads} \
       -g $good_bins/*.fa
+    """
+}
+
+process CombineDereplicatedMAGs {
+    tag "combine_and_index_MAGs"
+
+    input:
+    path drep_genomes_dir
+
+    output:
+    path "mag_index.*"
+
+    script:
+    """
+    cat $drep_genomes_dir/*.fa > dereplicated_MAGs.fa
+
+    bowtie2-build dereplicated_MAGs.fa mag_index
+    """
+}
+
+process QuantMAGs {
+    tag "$sample"
+
+    input:
+    tuple val(sample), path(r1), path(r2)
+    path "mag_index.*"
+
+    output:
+    path "quant_results/${sample}.tsv", emit: quant_profiles
+
+    script:
+    """
+    mkdir -p bams quant_results
+
+    bowtie2 -x mag_index -1 $r1 -2 $r2 -p ${params.threads} | \
+        samtools sort -@ ${params.threads} -O BAM -o bams/${sample}.bam
+
+    samtools view bams/${sample}.bam | \
+        woltka classify -i - -o quant_results/${sample}.tsv --to-tsv --unassigned
     """
 }
 
@@ -197,6 +236,13 @@ workflow {
     good_bins = FilterGoodBins(checkm, gunc, combined_bins)
 
     // Dereplicate
-    Dereplicate(good_bins)
+    drep_out = Dereplicate(good_bins)
+
+    // Combine dereplicated MAGs and create index
+    mag_indexed = CombineDereplicatedMAGs(drep_out)
+
+    // Generate abundance table
+    quant_input = sample_reads.map { sample, r1, r2 -> tuple(sample, r1, r2) }.combine(mag_indexed)
+    quant_profiles = QuantMAGs(quant_input)
 
 }

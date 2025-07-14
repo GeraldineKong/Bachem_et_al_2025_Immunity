@@ -14,3 +14,4 @@ dependencies:
   - drep=3.4.3
   - python=3.7.12
   - pandas
+  - woltka=0.1.5
